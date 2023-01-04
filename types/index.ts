@@ -47,14 +47,12 @@ export interface WalletAccount {
 }
 
 export interface ChainInfo {
-  nodeAddress?: string;
-  denom?: string;
-  displayDenom?: string;
-  displayDenomExponent?: number;
-  gasPrice?: string;
-  chainId?: string;
-  chainDisplayName?: string;
-  registryName?: string;
-  addressPrefix?: string;
-  explorerLink?: string;
+  nodeAddress: string;
+  denom: string;
+  displayDenom: string;
+  displayDenomExponent: number;
+  gasPrice: string;
+  chainId: string;
+  chainDisplayName: string;
+  addressPrefix: string;
 }

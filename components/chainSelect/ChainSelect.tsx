@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { StargateClient } from "@cosmjs/stargate";
+import axios from "axios";
+import React, { useEffect, useState } from "react";
 
+import { assert } from "@cosmjs/utils";
+import { ChainInfo } from "@keplr-wallet/types";
+import { useAppContext } from "../../context/AppContext";
 import GearIcon from "../icons/Gear";
 import Button from "../inputs/Button";
 import Input from "../inputs/Input";
-import { useAppContext } from "../../context/AppContext";
 import Select from "../inputs/Select";
 import StackableContainer from "../layout/StackableContainer";
-import { assert } from "@cosmjs/utils";
 
-interface ChainOption {
+interface ChainSelectOption {
   label: string;
   value: number;
 }
@@ -36,8 +37,8 @@ const ChainSelect = () => {
   const { state, dispatch } = useAppContext();
 
   // UI State
-  const [chainArray, setChainArray] = useState([]);
-  const [chainOptions, setChainOptions] = useState<ChainOption[]>([]);
+  const [chainInfos, setChainInfos] = useState<ChainInfo[]>([]);
+  const [chainSelectOptions, setChainSelectOptions] = useState<ChainSelectOption[]>([]);
   const [chainError, setChainError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [selectValue, setSelectValue] = useState({ label: "Loading...", value: -1 });
@@ -53,14 +54,25 @@ const ChainSelect = () => {
   );
   const [tempGasPrice, setGasPrice] = useState(state.chain.gasPrice);
   const [tempChainName, setChainName] = useState(state.chain.chainDisplayName);
-  const [tempRegistryName, setRegistryName] = useState(state.chain.registryName);
-  const [tempExplorerLink, setExplorerLink] = useState(state.chain.explorerLink);
 
-  const url = "https://api.github.com/repos/cosmos/chain-registry/contents";
+  const url = "https://api.github.com/repos/chainapsis/keplr-chain-registry/contents/cosmos";
 
   useEffect(() => {
     getGhJson();
   }, []);
+
+  useEffect(() => {
+    if (chainInfos.length > 0 && state.chain.chainId) {
+      const defaultSelectOptionIndex = chainInfos.findIndex(
+        (chainInfo) => chainInfo.chainId === state.chain.chainId,
+      );
+
+      setSelectValue({
+        label: chainInfos[defaultSelectOptionIndex].chainName,
+        value: defaultSelectOptionIndex,
+      });
+    }
+  }, [state.chain.chainId, chainInfos.length]);
 
   useEffect(() => {
     // set settings form fields to new values
@@ -72,24 +84,36 @@ const ChainSelect = () => {
     setDisplayDenomExponent(state.chain.displayDenomExponent);
     setGasPrice(state.chain.gasPrice);
     setChainName(state.chain.chainDisplayName);
-    setExplorerLink(state.chain.explorerLink);
-    setRegistryName(state.chain.registryName);
   }, [state]);
 
   const getGhJson = async () => {
     // getting chain info from this repo: https://github.com/cosmos/chain-registry
     try {
-      const res = await axios.get(url);
-      const chains = res.data.filter((item: GithubChainRegistryItem) => {
-        return item.type == "dir" && !item.name.startsWith(".") && item.name != "testnets";
+      const chainInfoFiles: GithubChainRegistryItem[] = (await axios.get(url)).data;
+      const newChainInfos = (
+        await Promise.allSettled(
+          chainInfoFiles.map(async (chainInfoFile) => {
+            const chainInfoUrl = `https://cdn.jsdelivr.net/gh/chainapsis/keplr-chain-registry@master/${chainInfoFile.path}`;
+            return (await axios.get(chainInfoUrl)).data;
+          }),
+        )
+      )
+        .filter(
+          (promise): promise is PromiseFulfilledResult<ChainInfo> => promise.status === "fulfilled",
+        )
+        .map((promise) => promise.value);
+      const options = newChainInfos.map(({ chainName }: ChainInfo, index: number) => {
+        return { label: chainName, value: index };
       });
-      setChainArray(chains);
-      const options = chains.map(({ name }: GithubChainRegistryItem, index: number) => {
-        return { label: name, value: index };
+      setChainInfos(newChainInfos);
+      setChainSelectOptions(options);
+      const defaultSelectOptionIndex = state.chain.chainId
+        ? newChainInfos.findIndex((chainInfo) => chainInfo.chainId === state.chain.chainId)
+        : newChainInfos.findIndex((chainInfo) => chainInfo.chainId.startsWith("cosmoshub"));
+      setSelectValue({
+        label: newChainInfos[defaultSelectOptionIndex].chainName,
+        value: defaultSelectOptionIndex,
       });
-      setChainOptions(options);
-      assert(state.chain.registryName, "registryName missing");
-      setSelectValue(findExistingOption(options, state.chain.registryName));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.log(error);
@@ -98,115 +122,29 @@ const ChainSelect = () => {
     }
   };
 
-  const findExistingOption = (options: ChainOption[], registryName: string) => {
-    const index = options.findIndex((option) => option.label === registryName);
-    if (index >= 0) {
-      return options[index];
-    }
-    return { label: "unkown chain", value: -1 };
-  };
-
-  const getChainInfo = async (chainOption: GithubChainRegistryItem) => {
-    setChainError(null);
-    try {
-      const chainInfoUrl =
-        "https://cdn.jsdelivr.net/gh/cosmos/chain-registry@master/" +
-        chainOption.path +
-        "/chain.json";
-      const chainAssetUrl =
-        "https://cdn.jsdelivr.net/gh/cosmos/chain-registry@master/" +
-        chainOption.path +
-        "/assetlist.json";
-
-      const { data: chainData } = await axios.get(chainInfoUrl);
-      const { data: assetData } = await axios.get(chainAssetUrl);
-
-      const nodeAddress = getNodeFromArray(chainData.apis.rpc);
-      const addressPrefix = chainData["bech32_prefix"];
-      const chainId = chainData["chain_id"];
-      const chainDisplayName = chainData["pretty_name"];
-      const registryName = chainOption.name;
-      const explorerLink = getExplorerFromArray(chainData.explorers);
-      let asset = null;
-      let denom = "";
-      let displayDenom = "";
-      const displayDenomExponent = 6;
-      let gasPrice = "";
-
-      if (assetData.assets.length > 1) {
-        denom = "";
-        displayDenom = "";
-        gasPrice = "";
-
-        setChainError("Multiple token denoms available, enter manually");
-        setShowSettings(true);
-      } else {
-        asset = assetData.assets[0];
-        denom = asset.base;
-        displayDenom = asset.symbol;
-        gasPrice = `0.03${asset.base}`;
-      }
-
-      // test client connection
-      const client = await StargateClient.connect(nodeAddress);
-      await client.getHeight();
-
-      // change app state
-      dispatch({
-        type: "changeChain",
-        value: {
-          nodeAddress,
-          denom,
-          displayDenom,
-          displayDenomExponent,
-          gasPrice,
-          chainId,
-          chainDisplayName,
-          registryName,
-          addressPrefix,
-          explorerLink,
-        },
-      });
-      setShowSettings(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.log(error);
-      setShowSettings(true);
-      setChainError(error.toString());
-    }
-  };
-
-  const getExplorerFromArray = (array: { kind: string; url: string; tx_page: string }[]) => {
-    if (array && array.length > 0) {
-      return array[0]["tx_page"];
-    }
-    return "";
-  };
-
-  const getNodeFromArray = (nodeArray: { address: string; provider: string }[]) => {
-    // only return https connections
-    const secureNodes = nodeArray.filter((node) => node.address.includes("https://"));
-    if (secureNodes.length === 0) {
-      throw new Error("No SSL enabled RPC nodes available for this chain");
-    }
-    return secureNodes[0].address;
-  };
-
-  const onChainSelect = (option: ChainOption) => {
-    const index = chainOptions.findIndex((opt) => opt.label === option.label);
-    setSelectValue(chainOptions[index]);
-    getChainInfo(chainArray[option.value]);
+  const onChainSelect = (option: ChainSelectOption) => {
+    const index = chainSelectOptions.findIndex((opt) => opt.label === option.label);
+    const selectedChainInfo = chainInfos[index];
+    setSelectValue(chainSelectOptions[index]);
+    // change app state
+    dispatch({
+      type: "changeChain",
+      value: {
+        nodeAddress: selectedChainInfo.rpc,
+        denom: selectedChainInfo.stakeCurrency.coinMinimalDenom,
+        displayDenom: selectedChainInfo.stakeCurrency.coinDenom,
+        displayDenomExponent: selectedChainInfo.stakeCurrency.coinDecimals,
+        gasPrice: `${selectedChainInfo.feeCurrencies[0].gasPriceStep?.average}${selectedChainInfo.stakeCurrency.coinMinimalDenom}`,
+        chainId: selectedChainInfo.chainId,
+        chainDisplayName: selectedChainInfo.chainName,
+        addressPrefix: selectedChainInfo.bech32Config.bech32PrefixAccAddr,
+      },
+    });
   };
 
   const setChainFromForm = async () => {
     setChainError(null);
     try {
-      // test client connection
-      assert(tempNodeAddress, "tempNodeAddress missing");
-      const client = await StargateClient.connect(tempNodeAddress);
-      await client.getHeight();
-
-      // change app state
       dispatch({
         type: "changeChain",
         value: {
@@ -217,14 +155,9 @@ const ChainSelect = () => {
           gasPrice: tempGasPrice,
           chainId: tempChainId,
           chainDisplayName: tempChainName,
-          registryName: tempRegistryName,
           addressPrefix: tempAddressPrefix,
-          explorerLink: tempExplorerLink,
         },
       });
-      assert(tempRegistryName, "tempRegistryName missing");
-      const selectedOption = findExistingOption(chainOptions, tempRegistryName);
-      setSelectValue(selectedOption);
       setShowSettings(false);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -237,11 +170,11 @@ const ChainSelect = () => {
   return (
     <div className="chain-select-container">
       <StackableContainer lessPadding base>
-        <p>Chain select</p>
+        <p>Select Chain</p>
         <div className="flex">
           <div className="select-parent">
             <Select
-              options={chainOptions}
+              options={chainSelectOptions}
               onChange={onChainSelect}
               value={selectValue}
               name="chain-select"
@@ -327,16 +260,6 @@ const ChainSelect = () => {
                   value={tempGasPrice}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGasPrice(e.target.value)}
                   label="Gas Price"
-                />
-              </div>
-              <div className="settings-group">
-                <Input
-                  width="48%"
-                  value={tempExplorerLink}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setExplorerLink(e.target.value)
-                  }
-                  label="Explorer Link (with '${txHash}' included)"
                 />
               </div>
               <Button label="Set Chain" onClick={setChainFromForm} />

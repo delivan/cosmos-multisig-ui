@@ -75,7 +75,6 @@ const MultiSigForm = (props: Props) => {
       const tempPubkeys = [...pubkeys];
       let pubkey;
       // use pubkey
-      console.log(tempPubkeys[index]);
       if (tempPubkeys[index].isPubkey) {
         pubkey = e.target.value;
         if (pubkey.length !== 44) {
@@ -133,7 +132,6 @@ const MultiSigForm = (props: Props) => {
           <p>Add the addresses that will make up this multisig.</p>
         </StackableContainer>
         {pubkeys.map((pubkeyGroup, index) => {
-          assert(state.chain.addressPrefix, "addressPrefix missing");
           return (
             <StackableContainer lessPadding lessMargin key={index}>
               <div className="key-row">

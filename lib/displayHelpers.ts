@@ -72,6 +72,10 @@ const printableCoins = (coins: Coin[], chainInfo: ChainInfo) => {
  * `index` can be set to a small integer in order to get different addresses. Defaults to 0.
  */
 const exampleAddress = (index: number, chainAddressPrefix: string) => {
+  if (!chainAddressPrefix) {
+    return "";
+  }
+
   const usedIndex = index || 0;
   let data = fromBech32("cosmos1vqpjljwsynsn58dugz0w8ut7kun7t8ls2qkmsq").data;
   for (let i = 0; i < usedIndex; ++i) {

@@ -6,7 +6,6 @@ import Button from "../inputs/Button";
 import StackableContainer from "../layout/StackableContainer";
 import Input from "../inputs/Input";
 import { exampleAddress } from "../../lib/displayHelpers";
-import { assert } from "@cosmjs/utils";
 
 interface Props {
   router: NextRouter;
@@ -22,8 +21,6 @@ const FindMultisigForm = (props: Props) => {
 
     props.router.push(`/multi/${address}`);
   };
-
-  assert(state.chain.addressPrefix, "addressPrefix missing");
 
   return (
     <StackableContainer>
