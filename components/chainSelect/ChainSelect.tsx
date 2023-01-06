@@ -1,8 +1,6 @@
-import { StargateClient } from "@cosmjs/stargate";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 
-import { assert } from "@cosmjs/utils";
 import { ChainInfo } from "@keplr-wallet/types";
 import { useAppContext } from "../../context/AppContext";
 import GearIcon from "../icons/Gear";
@@ -45,7 +43,7 @@ const ChainSelect = () => {
 
   // Chain State
   const [tempChainId, setChainId] = useState(state.chain.chainId);
-  const [tempNodeAddress, setNodeAddress] = useState(state.chain.nodeAddress);
+  const [tempLcd, setLcd] = useState(state.chain.lcd);
   const [tempAddressPrefix, setAddressPrefix] = useState(state.chain.addressPrefix);
   const [tempDenom, setDenom] = useState(state.chain.denom);
   const [tempDisplayDenom, setDisplayDenom] = useState(state.chain.displayDenom);
@@ -66,10 +64,24 @@ const ChainSelect = () => {
       const defaultSelectOptionIndex = chainInfos.findIndex(
         (chainInfo) => chainInfo.chainId === state.chain.chainId,
       );
+      const defaultSelectChainInfo = chainInfos[defaultSelectOptionIndex];
 
       setSelectValue({
-        label: chainInfos[defaultSelectOptionIndex].chainName,
+        label: defaultSelectChainInfo.chainName,
         value: defaultSelectOptionIndex,
+      });
+      dispatch({
+        type: "changeChain",
+        value: {
+          lcd: defaultSelectChainInfo.rest,
+          denom: defaultSelectChainInfo.stakeCurrency.coinMinimalDenom,
+          displayDenom: defaultSelectChainInfo.stakeCurrency.coinDenom,
+          displayDenomExponent: defaultSelectChainInfo.stakeCurrency.coinDecimals,
+          gasPrice: `${defaultSelectChainInfo.feeCurrencies[0].gasPriceStep?.average}${defaultSelectChainInfo.stakeCurrency.coinMinimalDenom}`,
+          chainId: defaultSelectChainInfo.chainId,
+          chainDisplayName: defaultSelectChainInfo.chainName,
+          addressPrefix: defaultSelectChainInfo.bech32Config.bech32PrefixAccAddr,
+        },
       });
     }
   }, [state.chain.chainId, chainInfos.length]);
@@ -77,7 +89,7 @@ const ChainSelect = () => {
   useEffect(() => {
     // set settings form fields to new values
     setChainId(state.chain.chainId);
-    setNodeAddress(state.chain.nodeAddress);
+    setLcd(state.chain.lcd);
     setAddressPrefix(state.chain.addressPrefix);
     setDenom(state.chain.denom);
     setDisplayDenom(state.chain.displayDenom);
@@ -110,9 +122,24 @@ const ChainSelect = () => {
       const defaultSelectOptionIndex = state.chain.chainId
         ? newChainInfos.findIndex((chainInfo) => chainInfo.chainId === state.chain.chainId)
         : newChainInfos.findIndex((chainInfo) => chainInfo.chainId.startsWith("cosmoshub"));
+      const defaultSelectChainInfo = newChainInfos[defaultSelectOptionIndex];
+
       setSelectValue({
         label: newChainInfos[defaultSelectOptionIndex].chainName,
         value: defaultSelectOptionIndex,
+      });
+      dispatch({
+        type: "changeChain",
+        value: {
+          lcd: defaultSelectChainInfo.rest,
+          denom: defaultSelectChainInfo.stakeCurrency.coinMinimalDenom,
+          displayDenom: defaultSelectChainInfo.stakeCurrency.coinDenom,
+          displayDenomExponent: defaultSelectChainInfo.stakeCurrency.coinDecimals,
+          gasPrice: `${defaultSelectChainInfo.feeCurrencies[0].gasPriceStep?.average}${defaultSelectChainInfo.stakeCurrency.coinMinimalDenom}`,
+          chainId: defaultSelectChainInfo.chainId,
+          chainDisplayName: defaultSelectChainInfo.chainName,
+          addressPrefix: defaultSelectChainInfo.bech32Config.bech32PrefixAccAddr,
+        },
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -130,7 +157,7 @@ const ChainSelect = () => {
     dispatch({
       type: "changeChain",
       value: {
-        nodeAddress: selectedChainInfo.rpc,
+        lcd: selectedChainInfo.rest,
         denom: selectedChainInfo.stakeCurrency.coinMinimalDenom,
         displayDenom: selectedChainInfo.stakeCurrency.coinDenom,
         displayDenomExponent: selectedChainInfo.stakeCurrency.coinDecimals,
@@ -148,7 +175,7 @@ const ChainSelect = () => {
       dispatch({
         type: "changeChain",
         value: {
-          nodeAddress: tempNodeAddress,
+          lcd: tempLcd,
           denom: tempDenom,
           displayDenom: tempDisplayDenom,
           displayDenomExponent: tempDisplayDenomExponent,
@@ -223,11 +250,9 @@ const ChainSelect = () => {
                 />
                 <Input
                   width="48%"
-                  value={tempNodeAddress}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setNodeAddress(e.target.value)
-                  }
-                  label="RPC Node URL (must be https)"
+                  value={tempLcd}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLcd(e.target.value)}
+                  label="LCD Node URL (must be https)"
                 />
               </div>
               <div className="settings-group">

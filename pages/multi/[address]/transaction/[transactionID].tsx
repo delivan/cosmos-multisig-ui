@@ -38,7 +38,7 @@ export const getServerSideProps: GetServerSideProps = async (context): Promise<P
   let txHash;
   let signatures;
   try {
-    console.log("Function `findTransactionByID` invoked", transactionID);
+    "Function `findTransactionByID` invoked", transactionID);
     const getRes = await findTransactionByID(transactionID);
     console.log("success", getRes.data);
     txHash = getRes.data.data.findTransactionByID.txHash;
@@ -94,8 +94,8 @@ const transactionPage = ({
 
   const fetchMultisig = async (address: string) => {
     try {
-      assert(state.chain.nodeAddress, "Node address missing");
-      const client = await StargateClient.connect(state.chain.nodeAddress);
+      assert(state.chain.lcd, "Node address missing");
+      const client = await StargateClient.connect(state.chain.lcd);
       const result = await getMultisigAccount(address, client);
       setPubkey(result[0]);
       setAccountOnChain(result[1]);
@@ -121,8 +121,8 @@ const transactionPage = ({
         bodyBytes,
         new Map(currentSignatures.map((s) => [s.address, fromBase64(s.signature)])),
       );
-      assert(state.chain.nodeAddress, "Node address missing");
-      const broadcaster = await StargateClient.connect(state.chain.nodeAddress);
+      assert(state.chain.lcd, "Node address missing");
+      const broadcaster = await StargateClient.connect(state.chain.lcd);
       const result = await broadcaster.broadcastTx(
         Uint8Array.from(TxRaw.encode(signedTx).finish()),
       );

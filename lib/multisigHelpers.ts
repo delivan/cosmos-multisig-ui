@@ -41,9 +41,9 @@ const createMultisigFromCompressedSecp256k1Pubkeys = async (
     chainId,
   };
 
-  const res = await axios.post(`/api/chain/${chainId}/multisig`, multisig);
-  console.log(res.data);
-  return res.data.address;
+  await axios.post(`/api/chain/${chainId}/multisig`, multisig);
+
+  return multisigAddress;
 };
 
 /**

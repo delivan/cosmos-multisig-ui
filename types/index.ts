@@ -47,7 +47,7 @@ export interface WalletAccount {
 }
 
 export interface ChainInfo {
-  nodeAddress: string;
+  lcd: string;
   denom: string;
   displayDenom: string;
   displayDenomExponent: number;

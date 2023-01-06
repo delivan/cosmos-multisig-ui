@@ -3,7 +3,7 @@ import { AppContextType } from "./AppContext";
 
 export const initialState: AppContextType = {
   chain: {
-    nodeAddress: "",
+    lcd: "",
     denom: "",
     displayDenom: "",
     displayDenomExponent: 0,

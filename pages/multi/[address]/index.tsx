@@ -48,8 +48,8 @@ const multipage = () => {
   const fetchMultisig = async (address: string) => {
     setAccountError(null);
     try {
-      assert(state.chain.nodeAddress, "Node address missing");
-      const client = await StargateClient.connect(state.chain.nodeAddress);
+      assert(state.chain.lcd, "Node address missing");
+      const client = await StargateClient.connect(state.chain.lcd);
       assert(state.chain.denom, "denom missing");
       const tempHoldings = await client.getBalance(address, state.chain.denom);
       setHoldings(tempHoldings);

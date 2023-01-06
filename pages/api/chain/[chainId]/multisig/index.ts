@@ -1,21 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createMultisig } from "../../../../../lib/graphqlHelpers";
+import clientPromise from "../../../../../lib/mongodbHelpers";
 
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case "POST":
       try {
-        const data = req.body;
-        console.log("Function `createMultisig` invoked", data);
-        const saveRes = await createMultisig(data);
-        console.log("success", saveRes.data);
-        res.status(200).send(saveRes.data.data.createMultisig);
-        return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
-        console.log(err);
-        res.status(400).send(err.message);
-        return;
+        const client = await clientPromise;
+        const db = client.db("keplr-multisig");
+        const { address, pubkeyJSON, chainId } = req.body;
+
+        const multisig = await db.collection("multisigs").insertOne({
+          address,
+          pubkeyJSON,
+          chainId,
+        });
+        res.json(multisig);
+      } catch (e) {
+        console.error(e);
+        throw new Error(e).message;
       }
   }
   // no route matched

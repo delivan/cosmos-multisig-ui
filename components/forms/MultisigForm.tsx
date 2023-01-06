@@ -10,6 +10,7 @@ import Input from "../inputs/Input";
 import StackableContainer from "../layout/StackableContainer";
 import ThresholdInput from "../inputs/ThresholdInput";
 import { exampleAddress, examplePubkey } from "../../lib/displayHelpers";
+import axios from "axios";
 
 const emptyPubKeyGroup = () => {
   return { address: "", compressedPubkey: "", keyError: "", isPubkey: false };
@@ -58,16 +59,16 @@ const MultiSigForm = (props: Props) => {
   };
 
   const getPubkeyFromNode = async (address: string) => {
-    assert(state.chain.nodeAddress, "nodeAddress missing");
-    const client = await StargateClient.connect(state.chain.nodeAddress);
-    const accountOnChain = await client.getAccount(address);
-    console.log(accountOnChain);
-    if (!accountOnChain || !accountOnChain.pubkey) {
+    assert(state.chain.lcd, "lcd missing");
+    const {
+      data: { account: accountData },
+    } = await axios.get(`${state.chain.lcd}/cosmos/auth/v1beta1/accounts/${address}`);
+    if (!accountData || !accountData.pub_key) {
       throw new Error(
         "Account has no pubkey on chain, this address will need to send a transaction to appear on chain.",
       );
     }
-    return accountOnChain.pubkey.value;
+    return accountData.pub_key.key;
   };
 
   const handleKeyBlur = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,11 +104,10 @@ const MultiSigForm = (props: Props) => {
   const handleCreate = async () => {
     setProcessing(true);
     const compressedPubkeys = pubkeys.map((item) => item.compressedPubkey);
-    let multisigAddress;
     try {
       assert(state.chain.addressPrefix, "addressPrefix missing");
       assert(state.chain.chainId, "chainId missing");
-      multisigAddress = await createMultisigFromCompressedSecp256k1Pubkeys(
+      const multisigAddress = await createMultisigFromCompressedSecp256k1Pubkeys(
         compressedPubkeys,
         threshold,
         state.chain.addressPrefix,
