@@ -53,8 +53,6 @@ const ChainSelect = () => {
   const [tempGasPrice, setGasPrice] = useState(state.chain.gasPrice);
   const [tempChainName, setChainName] = useState(state.chain.chainDisplayName);
 
-  const url = "https://api.github.com/repos/chainapsis/keplr-chain-registry/contents/cosmos";
-
   useEffect(() => {
     getGhJson();
   }, []);
@@ -101,6 +99,8 @@ const ChainSelect = () => {
   const getGhJson = async () => {
     // getting chain info from this repo: https://github.com/cosmos/chain-registry
     try {
+      const url = "https://api.github.com/repos/chainapsis/keplr-chain-registry/contents/cosmos";
+
       const chainInfoFiles: GithubChainRegistryItem[] = (await axios.get(url)).data;
       const newChainInfos = (
         await Promise.allSettled(

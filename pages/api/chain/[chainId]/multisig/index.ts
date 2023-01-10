@@ -7,6 +7,7 @@ export default async function (req: NextApiRequest, res: NextApiResponse) {
       try {
         const client = await clientPromise;
         const db = client.db("keplr-multisig");
+
         const { address, pubkeyJSON, chainId } = req.body;
 
         const multisig = await db.collection("multisigs").insertOne({

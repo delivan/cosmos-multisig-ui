@@ -39,31 +39,22 @@ const multipage = () => {
 
   useEffect(() => {
     const address = router.query.address?.toString();
-    if (address) {
+    if (address && state.chain.lcd) {
       setMultisigAddress(address);
       fetchMultisig(address);
     }
-  }, [state, router.query.address]);
+  }, [state.chain.lcd, router.query.address]);
 
   const fetchMultisig = async (address: string) => {
     setAccountError(null);
     try {
-      assert(state.chain.lcd, "Node address missing");
-      const client = await StargateClient.connect(state.chain.lcd);
-      assert(state.chain.denom, "denom missing");
-      const tempHoldings = await client.getBalance(address, state.chain.denom);
-      setHoldings(tempHoldings);
-      const result = await getMultisigAccount(address, client);
-      setPubkey(result[0]);
-      setAccountOnChain(result[1]);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await getMultisigAccount(address, state.chain.chainId);
+      setPubkey(result);
     } catch (error: any) {
       setAccountError(error.message);
       console.log("Account error:", error);
     }
   };
-
-  assert(state.chain.addressPrefix, "address prefix missing");
 
   return (
     <Page>
@@ -78,7 +69,7 @@ const multipage = () => {
             )}
           </h1>
         </StackableContainer>
-        {pubkey && (
+        {pubkey && state.chain.addressPrefix && (
           <MultisigMembers
             members={participantAddressesFromMultisig(pubkey, state.chain.addressPrefix)}
             threshold={pubkey.value.threshold}

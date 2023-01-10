@@ -11,6 +11,7 @@ import StackableContainer from "../layout/StackableContainer";
 import ThresholdInput from "../inputs/ThresholdInput";
 import { exampleAddress, examplePubkey } from "../../lib/displayHelpers";
 import axios from "axios";
+import { getAccountData } from "../../lib/account";
 
 const emptyPubKeyGroup = () => {
   return { address: "", compressedPubkey: "", keyError: "", isPubkey: false };
@@ -60,9 +61,7 @@ const MultiSigForm = (props: Props) => {
 
   const getPubkeyFromNode = async (address: string) => {
     assert(state.chain.lcd, "lcd missing");
-    const {
-      data: { account: accountData },
-    } = await axios.get(`${state.chain.lcd}/cosmos/auth/v1beta1/accounts/${address}`);
+    const accountData = await getAccountData(state.chain.lcd, address);
     if (!accountData || !accountData.pub_key) {
       throw new Error(
         "Account has no pubkey on chain, this address will need to send a transaction to appear on chain.",

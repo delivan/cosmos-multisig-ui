@@ -1,20 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getMultisig } from "../../../../../../lib/graphqlHelpers";
+import clientPromise from "../../../../../../lib/mongodbHelpers";
 
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case "GET":
       try {
+        const client = await clientPromise;
+        const db = client.db("keplr-multisig");
+
         const multisigAddress = req.query.multisigAddress.toString();
         const chainId = req.query.chainId.toString();
-        console.log("Function `getMultisig` invoked", multisigAddress, chainId);
-        const getRes = await getMultisig(multisigAddress, chainId);
-        if (!getRes.data.data.getMultisig) {
+
+        const multisig = await db.collection("multisigs").findOne({
+          address: multisigAddress,
+          chainId,
+        });
+
+        if (!multisig) {
           res.status(404).send("Multisig not found");
           return;
         }
-        console.log("success", getRes.data.data.getMultisig);
-        res.status(200).send(getRes.data.data.getMultisig);
+        console.log("success", multisig);
+        res.status(200).send(multisig);
         return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {

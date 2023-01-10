@@ -1,13 +1,10 @@
-import axios from "axios";
 import {
   createMultisigThresholdPubkey,
-  isMultisigThresholdPubkey,
   MultisigThresholdPubkey,
   pubkeyToAddress,
 } from "@cosmjs/amino";
-import { Account } from "@cosmjs/stargate";
-import { StargateClient } from "@cosmjs/stargate";
-import { assert } from "@cosmjs/utils";
+import axios from "axios";
+import { AccountData, getAccountData } from "./account";
 
 /**
  * Turns array of compressed Secp256k1 pubkeys
@@ -56,33 +53,16 @@ const createMultisigFromCompressedSecp256k1Pubkeys = async (
  */
 const getMultisigAccount = async (
   address: string,
-  client: StargateClient,
-): Promise<[MultisigThresholdPubkey, Account | null]> => {
-  // we need the multisig pubkeys to create transactions, if the multisig
-  // is new, and has never submitted a transaction its pubkeys will not be
-  // available from a node. If the multisig was created with this instance
-  // of this tool its pubkey will be available in the fauna datastore
-  const accountOnChain = await client.getAccount(address);
-  const chainId = await client.getChainId();
+  chainId: string,
+): Promise<MultisigThresholdPubkey> => {
+  const res = await axios.get(`/api/chain/${chainId}/multisig/${address}`);
 
-  let pubkey: MultisigThresholdPubkey;
-  if (accountOnChain?.pubkey) {
-    assert(
-      isMultisigThresholdPubkey(accountOnChain.pubkey),
-      "Pubkey on chain is not of type MultisigThreshold",
-    );
-    pubkey = accountOnChain.pubkey;
-  } else {
-    console.log("No pubkey on chain for: ", address);
-    const res = await axios.get(`/api/chain/${chainId}/multisig/${address}`);
-
-    if (res.status !== 200) {
-      throw new Error("Multisig has no pubkey on node, and was not created using this tool.");
-    }
-    pubkey = JSON.parse(res.data.pubkeyJSON);
+  if (res.status !== 200) {
+    throw new Error("Multisig has no pubkey on node, and was not created using this tool.");
   }
+  const pubkey: MultisigThresholdPubkey = JSON.parse(res.data.pubkeyJSON);
 
-  return [pubkey, accountOnChain];
+  return pubkey;
 };
 
 export { createMultisigFromCompressedSecp256k1Pubkeys, getMultisigAccount };
