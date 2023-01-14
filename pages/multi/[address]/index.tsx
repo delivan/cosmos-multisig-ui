@@ -15,6 +15,9 @@ import Page from "../../../components/layout/Page";
 import StackableContainer from "../../../components/layout/StackableContainer";
 import TransactionForm from "../../../components/forms/TransactionForm";
 import DelegationForm from "../../../components/forms/DelegationForm";
+import { getBalance } from "../../../lib/account";
+import { Currency } from "@keplr-wallet/types";
+import { CoinPretty } from "@keplr-wallet/unit";
 
 function participantPubkeysFromMultisig(multisigPubkey: Pubkey) {
   return multisigPubkey.value.pubkeys;
@@ -30,7 +33,7 @@ const multipage = () => {
   const { state } = useAppContext();
   const [showSendTxForm, setShowSendTxForm] = useState(false);
   const [showDelegateTxForm, setShowDelegateTxForm] = useState(false);
-  const [holdings, setHoldings] = useState<Coin | null>(null);
+  const [holdings, setHoldings] = useState<CoinPretty>();
   const [multisigAddress, setMultisigAddress] = useState("");
   const [accountOnChain, setAccountOnChain] = useState<Account | null>(null);
   const [pubkey, setPubkey] = useState<MultisigThresholdPubkey>();
@@ -49,7 +52,14 @@ const multipage = () => {
     setAccountError(null);
     try {
       const result = await getMultisigAccount(address, state.chain.chainId);
+      const currency: Currency = {
+        coinDenom: state.chain.displayDenom,
+        coinMinimalDenom: state.chain.denom,
+        coinDecimals: state.chain.displayDenomExponent,
+      };
+      const balance = await getBalance(state.chain.lcd, address, currency);
       setPubkey(result);
+      setHoldings(balance);
     } catch (error: any) {
       setAccountError(error.message);
       console.log("Account error:", error);
@@ -93,7 +103,6 @@ const multipage = () => {
         {showSendTxForm && (
           <TransactionForm
             address={multisigAddress}
-            accountOnChain={accountOnChain}
             closeForm={() => {
               setShowSendTxForm(false);
             }}

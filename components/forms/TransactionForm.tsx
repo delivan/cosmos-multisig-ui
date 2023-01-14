@@ -1,19 +1,20 @@
-import axios from "axios";
-import { Account, calculateFee } from "@cosmjs/stargate";
 import { Decimal } from "@cosmjs/math";
+import { calculateFee } from "@cosmjs/stargate";
 import { assert } from "@cosmjs/utils";
+import axios from "axios";
+import { InsertOneResult } from "mongodb";
+import { NextRouter, withRouter } from "next/router";
 import React, { useState } from "react";
-import { withRouter, NextRouter } from "next/router";
 
 import { useAppContext } from "../../context/AppContext";
+import { getAccountData } from "../../lib/account";
+import { checkAddress, exampleAddress } from "../../lib/displayHelpers";
 import Button from "../inputs/Button";
 import Input from "../inputs/Input";
 import StackableContainer from "../layout/StackableContainer";
-import { checkAddress, exampleAddress } from "../../lib/displayHelpers";
 
 interface Props {
-  address: string | null;
-  accountOnChain: Account | null;
+  address: string;
   router: NextRouter;
   closeForm: () => void;
 }
@@ -28,7 +29,7 @@ const TransactionForm = (props: Props) => {
   const [_processing, setProcessing] = useState(false);
   const [addressError, setAddressError] = useState("");
 
-  const createTransaction = (txToAddress: string, txAmount: string, txGas: number) => {
+  const createTransaction = async (txToAddress: string, txAmount: string, txGas: number) => {
     const amountInAtomics = Decimal.fromUserInput(
       txAmount,
       Number(state.chain.displayDenomExponent),
@@ -49,11 +50,12 @@ const TransactionForm = (props: Props) => {
     };
     assert(gasPrice, "gasPrice missing");
     const fee = calculateFee(Number(txGas), gasPrice);
-    const { accountOnChain } = props;
-    assert(accountOnChain, "accountOnChain missing");
+
+    const accountData = await getAccountData(state.chain.lcd, props.address);
+
     return {
-      accountNumber: accountOnChain.accountNumber,
-      sequence: accountOnChain.sequence,
+      accountNumber: accountData.account_number,
+      sequence: accountData.sequence,
       chainId: state.chain.chainId,
       msgs: [msg],
       fee: fee,
@@ -70,12 +72,12 @@ const TransactionForm = (props: Props) => {
     }
 
     setProcessing(true);
-    const tx = createTransaction(toAddress, amount, gas);
+    const tx = await createTransaction(toAddress, amount, gas);
     console.log(tx);
     const dataJSON = JSON.stringify(tx);
-    const res = await axios.post("/api/transaction", { dataJSON });
-    const { transactionID } = res.data;
-    props.router.push(`${props.address}/transaction/${transactionID}`);
+    const res = await axios.post<InsertOneResult<Document>>("/api/transaction", { dataJSON });
+    const { insertedId } = res.data;
+    props.router.push(`${props.address}/transaction/${insertedId}`);
   };
 
   assert(state.chain.addressPrefix, "addressPrefix missing");
