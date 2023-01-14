@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getMultisig } from "../../../../../../lib/graphqlHelpers";
 import clientPromise from "../../../../../../lib/mongodbHelpers";
 
 export default async function (req: NextApiRequest, res: NextApiResponse) {

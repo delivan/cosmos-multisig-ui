@@ -11,7 +11,6 @@ import { MultisigThresholdPubkey } from "@cosmjs/amino";
 import { DbSignature, DbTransaction } from "../../../../types";
 import { useAppContext } from "../../../../context/AppContext";
 import Button from "../../../../components/inputs/Button";
-import { findTransactionByID } from "../../../../lib/graphqlHelpers";
 import { getMultisigAccount } from "../../../../lib/multisigHelpers";
 import Page from "../../../../components/layout/Page";
 import StackableContainer from "../../../../components/layout/StackableContainer";
@@ -20,6 +19,8 @@ import TransactionInfo from "../../../../components/dataViews/TransactionInfo";
 import TransactionSigning from "../../../../components/forms/TransactionSigning";
 import CompletedTransaction from "../../../../components/dataViews/CompletedTransaction";
 import { assert } from "@cosmjs/utils";
+import clientPromise from "../../../../lib/mongodbHelpers";
+import { ObjectId } from "mongodb";
 
 interface Props {
   props: {
@@ -31,27 +32,24 @@ interface Props {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context): Promise<Props> => {
-  // get transaction info
-  const transactionID = context.params?.transactionID?.toString();
-  assert(transactionID, "Transaction ID missing");
-  let transactionJSON;
-  let txHash;
-  let signatures;
-  try {
-    const getRes = await findTransactionByID(transactionID);
-    console.log("success", getRes.data);
-    txHash = getRes.data.data.findTransactionByID.txHash;
-    transactionJSON = getRes.data.data.findTransactionByID.dataJSON;
-    signatures = getRes.data.data.findTransactionByID.signatures.data || [];
-  } catch (err: unknown) {
-    console.log(err);
-  }
+  // get transaction info from db
+  const transactionID = context.params?.transactionID?.toString() ?? "";
+
+  const client = await clientPromise;
+  const db = client.db("keplr-multisig");
+
+  const transaction = await db.collection("transactions").findOne({
+    _id: new ObjectId(transactionID),
+  });
+
+  console.log(transaction);
+
   return {
     props: {
-      transactionJSON,
-      txHash,
+      transactionJSON: transaction?.dataJSON || "",
+      txHash: transaction?.txHash || "",
       transactionID,
-      signatures,
+      signatures: transaction?.signatures?.data || [],
     },
   };
 };
@@ -74,7 +72,6 @@ const transactionPage = ({
   const [broadcastError, setBroadcastError] = useState("");
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [transactionHash, setTransactionHash] = useState(txHash);
-  const [accountOnChain, setAccountOnChain] = useState<Account | null>(null);
   const [pubkey, setPubkey] = useState<MultisigThresholdPubkey>();
   const [accountError, setAccountError] = useState(null);
   const txInfo: DbTransaction = (transactionJSON && JSON.parse(transactionJSON)) || null;
@@ -85,32 +82,29 @@ const transactionPage = ({
   };
 
   useEffect(() => {
+    const fetchMultisig = async (address: string) => {
+      try {
+        const result = await getMultisigAccount(address, state.chain.chainId);
+        setPubkey(result);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        setAccountError(error.toString());
+        console.log("Account error:", error);
+      }
+    };
+
     const address = router.query.address?.toString();
-    if (address) {
+    if (address && state.chain.chainId) {
       fetchMultisig(address);
     }
-  }, [state, router.query.address]);
-
-  const fetchMultisig = async (address: string) => {
-    try {
-      assert(state.chain.lcd, "Node address missing");
-      const client = await StargateClient.connect(state.chain.lcd);
-      const result = await getMultisigAccount(address, client);
-      setPubkey(result[0]);
-      setAccountOnChain(result[1]);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      setAccountError(error.toString());
-      console.log("Account error:", error);
-    }
-  };
+  }, [state.chain.chainId, router.query.address]);
 
   const broadcastTx = async () => {
     try {
       setIsBroadcasting(true);
       setBroadcastError("");
 
-      assert(accountOnChain, "Account on chain value missing.");
       assert(pubkey, "Pubkey not found on chain or in database");
       const bodyBytes = fromBase64(currentSignatures[0].bodyBytes);
       const signedTx = makeMultisignedTx(
