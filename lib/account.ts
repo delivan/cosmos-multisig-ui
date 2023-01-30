@@ -20,6 +20,7 @@ export const getAccountData = async (lcd: string, bech32Address: string) => {
     account: AccountData;
   }>(`${lcd}/cosmos/auth/v1beta1/accounts/${bech32Address}`);
 
+  console.log("test");
   return accountData;
 };
 
