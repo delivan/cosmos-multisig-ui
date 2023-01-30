@@ -1,16 +1,32 @@
+import { ObjectId } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createSignature } from "../../../../lib/graphqlHelpers";
+import clientPromise from "../../../../lib/mongodbHelpers";
 
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case "POST":
       try {
+        const client = await clientPromise;
+        const db = client.db("keplr-multisig");
+
         const transactionID = req.query.transactionID.toString();
-        const data = req.body;
-        console.log("Function `createSignature` invoked", data);
-        const saveRes = await createSignature(data, transactionID);
-        console.log("success", saveRes.data);
-        res.status(200).send(saveRes.data.data.createSignature);
+        const { bodyBytes, signature, address } = req.body;
+        const result = await db.collection("transactions").updateOne(
+          {
+            _id: new ObjectId(transactionID),
+          },
+          {
+            $push: {
+              signatures: {
+                address,
+                signature,
+                bodyBytes,
+              },
+            },
+          },
+        );
+        console.log("success", result);
+        res.json(result);
         return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {

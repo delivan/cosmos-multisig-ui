@@ -48,6 +48,7 @@ export interface WalletAccount {
 
 export interface ChainInfo {
   lcd: string;
+  rpc: string;
   denom: string;
   displayDenom: string;
   displayDenomExponent: number;

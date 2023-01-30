@@ -1,16 +1,29 @@
+import { ObjectId } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { updateTxHash } from "../../../../lib/graphqlHelpers";
+import clientPromise from "../../../../lib/mongodbHelpers";
 
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case "POST":
       try {
+        const client = await clientPromise;
+        const db = client.db("keplr-multisig");
+
         const transactionID = req.query.transactionID.toString();
         const { txHash } = req.body;
-        console.log("Function `updateTransaction` invoked", txHash);
-        const saveRes = await updateTxHash(transactionID, txHash);
-        console.log("success", saveRes.data);
-        res.status(200).send(saveRes.data.data.updateTransaction);
+
+        const result = await db.collection("transactions").updateOne(
+          {
+            _id: new ObjectId(transactionID),
+          },
+          {
+            $set: {
+              txHash,
+            },
+          },
+        );
+        console.log("success", result);
+        res.json(result);
         return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {

@@ -42,14 +42,12 @@ export const getServerSideProps: GetServerSideProps = async (context): Promise<P
     _id: new ObjectId(transactionID),
   });
 
-  console.log(transaction);
-
   return {
     props: {
       transactionJSON: transaction?.dataJSON || "",
       txHash: transaction?.txHash || "",
       transactionID,
-      signatures: transaction?.signatures?.data || [],
+      signatures: transaction?.signatures || [],
     },
   };
 };
@@ -107,6 +105,8 @@ const transactionPage = ({
 
       assert(pubkey, "Pubkey not found on chain or in database");
       const bodyBytes = fromBase64(currentSignatures[0].bodyBytes);
+
+      console.log(pubkey, txInfo, bodyBytes, currentSignatures);
       const signedTx = makeMultisignedTx(
         pubkey,
         txInfo.sequence,
@@ -114,16 +114,18 @@ const transactionPage = ({
         bodyBytes,
         new Map(currentSignatures.map((s) => [s.address, fromBase64(s.signature)])),
       );
-      assert(state.chain.lcd, "Node address missing");
-      const broadcaster = await StargateClient.connect(state.chain.lcd);
-      const result = await broadcaster.broadcastTx(
+
+      const result = await window.keplr.sendTx(
+        state.chain.chainId,
         Uint8Array.from(TxRaw.encode(signedTx).finish()),
+        "sync",
       );
-      console.log(result);
+      const newTxHash = Buffer.from(result).toString("hex");
+      console.log(newTxHash);
       const _res = await axios.post(`/api/transaction/${transactionID}`, {
-        txHash: result.transactionHash,
+        txHash: newTxHash,
       });
-      setTransactionHash(result.transactionHash);
+      setTransactionHash(newTxHash);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setIsBroadcasting(false);

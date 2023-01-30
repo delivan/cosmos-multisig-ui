@@ -44,6 +44,7 @@ const ChainSelect = () => {
   // Chain State
   const [tempChainId, setChainId] = useState(state.chain.chainId);
   const [tempLcd, setLcd] = useState(state.chain.lcd);
+  const [tempRpc, setRpc] = useState(state.chain.rpc);
   const [tempAddressPrefix, setAddressPrefix] = useState(state.chain.addressPrefix);
   const [tempDenom, setDenom] = useState(state.chain.denom);
   const [tempDisplayDenom, setDisplayDenom] = useState(state.chain.displayDenom);
@@ -72,6 +73,7 @@ const ChainSelect = () => {
         type: "changeChain",
         value: {
           lcd: defaultSelectChainInfo.rest,
+          rpc: defaultSelectChainInfo.rpc,
           denom: defaultSelectChainInfo.stakeCurrency.coinMinimalDenom,
           displayDenom: defaultSelectChainInfo.stakeCurrency.coinDenom,
           displayDenomExponent: defaultSelectChainInfo.stakeCurrency.coinDecimals,
@@ -88,6 +90,7 @@ const ChainSelect = () => {
     // set settings form fields to new values
     setChainId(state.chain.chainId);
     setLcd(state.chain.lcd);
+    setRpc(state.chain.rpc);
     setAddressPrefix(state.chain.addressPrefix);
     setDenom(state.chain.denom);
     setDisplayDenom(state.chain.displayDenom);
@@ -132,6 +135,7 @@ const ChainSelect = () => {
         type: "changeChain",
         value: {
           lcd: defaultSelectChainInfo.rest,
+          rpc: defaultSelectChainInfo.rpc,
           denom: defaultSelectChainInfo.stakeCurrency.coinMinimalDenom,
           displayDenom: defaultSelectChainInfo.stakeCurrency.coinDenom,
           displayDenomExponent: defaultSelectChainInfo.stakeCurrency.coinDecimals,
@@ -158,6 +162,7 @@ const ChainSelect = () => {
       type: "changeChain",
       value: {
         lcd: selectedChainInfo.rest,
+        rpc: selectedChainInfo.rpc,
         denom: selectedChainInfo.stakeCurrency.coinMinimalDenom,
         displayDenom: selectedChainInfo.stakeCurrency.coinDenom,
         displayDenomExponent: selectedChainInfo.stakeCurrency.coinDecimals,
@@ -176,6 +181,7 @@ const ChainSelect = () => {
         type: "changeChain",
         value: {
           lcd: tempLcd,
+          rpc: tempRpc,
           denom: tempDenom,
           displayDenom: tempDisplayDenom,
           displayDenomExponent: tempDisplayDenomExponent,

@@ -4,6 +4,7 @@ import { AppContextType } from "./AppContext";
 export const initialState: AppContextType = {
   chain: {
     lcd: "",
+    rpc: "",
     denom: "",
     displayDenom: "",
     displayDenomExponent: 0,
