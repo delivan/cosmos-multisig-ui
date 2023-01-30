@@ -13,6 +13,7 @@ export default async function (req: NextApiRequest, res: NextApiResponse) {
         const result = await db.collection("transactions").insertOne({
           dataJSON,
         });
+        console.log("test");
         res.json(result);
         return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
