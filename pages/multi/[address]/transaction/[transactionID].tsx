@@ -173,6 +173,7 @@ const transactionPage = ({
           />
         )}
       </StackableContainer>
+      <div />
 
       <style jsx>{`
         .broadcast-error {
